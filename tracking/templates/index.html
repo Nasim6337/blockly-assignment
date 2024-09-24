@@ -58,14 +58,15 @@
         if(check_case){
           console.log("hi")  
         async function json_data() {
-            const response = await fetch('/jsonHandle');
+            let url='https://map-1-a2bl.onrender.com/api/location'
+            const response = await fetch(url);
             const data = await response.json();
             console.log(data)
             //json data render start here
             control = L.Routing.control({
                     waypoints: [
-                        L.latLng(data[0].latitude, data[0].longtitude),
-                        L.latLng(data[1].latitude, data[1].longtitude)
+                         L.latLng(data[0].latitude, data[0].longitude),
+                        L.latLng(data[35].latitude, data[35].longitude)
                     ],
                     routeWhileDragging: true
                 }).addTo(map);
