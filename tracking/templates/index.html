@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Routing</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    <!-- Add Leaflet Routing Machine CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <!-- Geocoder -->
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+
+    <style>
+        #map {
+            border: 2px solid black;
+
+        }
+
+        input {
+            height: 30px;
+            font-size: 20px;
+        }
+
+        button {
+            font-size: 20px;
+            height: 35px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map" style="height: 400px;"></div>
+
+    <br><br>
+
+
+    <input type="text" id="start_address" placeholder="Enter starting address" name="start_end">
+    <input type="text" id="end_address" placeholder="Enter ending address" name="stop_end">
+    <button onclick="geocodeAndRoute()">Geocode and Route</button>
+
+
+    <script>
+        var map = L.map('map').setView([17.385044,78.486671], 7);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+
+        //fetching json data
+        let check_case = true
+        if(check_case){
+          console.log("hi")  
+        async function json_data() {
+            const response = await fetch('/jsonHandle');
+            const data = await response.json();
+            console.log(data)
+            //json data render start here
+            control = L.Routing.control({
+                    waypoints: [
+                        L.latLng(data[0].latitude, data[0].longtitude),
+                        L.latLng(data[1].latitude, data[1].longtitude)
+                    ],
+                    routeWhileDragging: true
+                }).addTo(map);
+
+                // Move car marker along the route
+                addMovingCarMarker();
+                //json data rendering end here
+
+        }
+           json_data()
+        }//if condition end here
+
+
+    
+
+        var geocoder = L.Control.Geocoder.nominatim();
+        var lat_lst = [];
+        var lng_lst = [];
+        var control; // Global routing control
+
+        // Function to geocode the addresses and create the route
+        function geocodeAndRoute() {
+            check_case = false
+            lat_lst = []
+            lng_lst = []
+            var start_address = document.getElementById('start_address').value;
+            var end_address = document.getElementById('end_address').value;
+            var addresses = [start_address, end_address];
+            var promises = [];
+
+            for (let i = 0; i < 2; i++) {
+                promises.push(new Promise((resolve, reject) => {
+                    geocoder.geocode(addresses[i], function (results) {
+                        if (results.length > 0) {
+                            var latlng = results[0].center;
+                            lat_lst.push(latlng.lat);
+                            lng_lst.push(latlng.lng);
+                            L.marker(latlng).addTo(map).bindPopup(addresses[i]).openPopup();
+                            resolve();
+                        } else {
+                            reject('Address not found');
+                        }
+                    });
+                }));
+            }
+
+            Promise.all(promises).then(() => {
+                // Remove previous control if it exists
+                if (control) {
+                    map.removeControl(control);
+                }
+
+                // Add new routing control
+                control = L.Routing.control({
+                    waypoints: [
+                        L.latLng(lat_lst[0], lng_lst[0]),
+                        L.latLng(lat_lst[1], lng_lst[1])
+                    ],
+                    routeWhileDragging: true
+                }).addTo(map);
+
+                // Move car marker along the route
+                addMovingCarMarker();
+            }).catch(error => {
+                console.error(error);
+            });
+        }
+
+        // Add a custom car icon
+        var carIcon = L.icon({
+            iconUrl: 'https://w7.pngwing.com/pngs/5/851/png-transparent-marker-map-icon-car-location-automobile-vehicle-target-design.png', // Replace with your car icon URL
+            iconSize: [40, 40], // Size of the icon
+            iconAnchor: [20, 20] // Point of the icon which will correspond to marker's location
+        });
+
+        // Initialize marker (will be moved later)
+        var marker = L.marker([25.7464, 82.6837], { icon: carIcon }).addTo(map);
+
+        // Function to move the marker along the route
+        function addMovingCarMarker() {
+            control.on('routesfound', function (e) {
+                var route = e.routes[0];
+                var coordinates = route.coordinates;
+                var i = 0;
+
+                // Move marker at a fixed interval
+                function moveMarker() {
+                    if (i < coordinates.length) {
+                        marker.setLatLng([coordinates[i].lat, coordinates[i].lng]);
+                        i++;
+                        setTimeout(moveMarker, 50); // Adjust the speed by changing the timeout value
+                    }
+                }
+
+                moveMarker(); // Start moving the marker
+            });
+        }
+
+    </script>
+</body>
+
+</html>
